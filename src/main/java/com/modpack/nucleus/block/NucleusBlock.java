@@ -2,6 +2,7 @@ package com.modpack.nucleus.block;
 
 import com.modpack.nucleus.entity.NucleusBlockEntity;
 import com.modpack.nucleus.init.NucleusBlockEntities;
+import com.mojang.serialization.MapCodec;
 import eu.pb4.polymer.core.api.block.PolymerBlock;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
@@ -13,8 +14,15 @@ import org.jetbrains.annotations.Nullable;
 
 public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
 
+    public static final MapCodec<NucleusBlock> CODEC = createCodec(NucleusBlock::new);
+
     public NucleusBlock(Settings settings) {
         super(settings);
+    }
+
+    @Override
+    protected MapCodec<? extends BlockWithEntity> getCodec() {
+        return CODEC;
     }
 
     @Override
@@ -34,7 +42,7 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
     }
 
     @Override
-    public BlockEntityType<NucleusBlockEntity> getPolymerBlockEntity() {
+    public @Nullable BlockEntityType<? extends NucleusBlockEntity> getPolymerBlockEntityType() {
         return NucleusBlockEntities.NUCLEUS_BLOCK_ENTITY;
     }
 
