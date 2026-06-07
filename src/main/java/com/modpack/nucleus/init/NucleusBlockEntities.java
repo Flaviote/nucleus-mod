@@ -18,6 +18,6 @@ public class NucleusBlockEntities {
                 .create(NucleusBlockEntity::new, NucleusBlocks.NUCLEUS_BLOCK)
                 .build()
         );
-        NucleusMod.LOGGER.info("[Nucleus] BlockEntity Núcleo registrado.");
+        NucleusMod.LOGGER.info("[Nucleus] BlockEntity registrado.");
     }
 }
