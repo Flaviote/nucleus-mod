@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "nucleus",
+  "version": "${version}",
+  "name": "Nucleus Mod",
+  "description": "Bloque Núcleo custom con Polymer para el modpack survival PvP.",
+  "authors": ["modpack"],
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.modpack.nucleus.NucleusMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "fabric-api":   ">=0.104.0+1.21.1",
+    "minecraft":    "~1.21.1",
+    "polymer-core": ">=0.9.14"
+  }
+}

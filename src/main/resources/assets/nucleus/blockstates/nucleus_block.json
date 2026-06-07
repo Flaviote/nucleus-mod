@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "nucleus:block/nucleus_block"
+    }
+  }
+}
