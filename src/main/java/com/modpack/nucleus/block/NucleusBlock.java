@@ -64,3 +64,34 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
             player.getInventory().insertStack(new ItemStack(this));
             player.sendMessage(Text.literal(
                 "§c✗ No puedes colocar tu Núcleo dentro del lobby."), false);
+            return;
+        }
+
+        if (world.getBlockEntity(pos) instanceof NucleusBlockEntity be) {
+            be.setOwner(player.getUuidAsString(), player.getName().getString());
+            be.setCustomName(Text.literal("Núcleo de " + player.getName().getString())
+                .styled(s -> s.withColor(0xCC55FF).withBold(true)));
+        }
+
+        NucleusStateManager stateManager = NucleusStateManager.get(player.getServer());
+        stateManager.setPhase(player.getUuid(), 1);
+        stateManager.setNucleusPosition(player.getUuid(), pos.getX(), pos.getY(), pos.getZ());
+
+        player.setSpawnPoint(world.getRegistryKey(), pos.up(), 0f, true, false);
+
+        player.sendMessage(Text.literal(
+            "§a✔ ¡Núcleo colocado! Ya puedes minar y construir libremente."), false);
+        player.sendMessage(Text.literal(
+            "§7Tu respawn ha sido fijado en este lugar."), false);
+        player.sendMessage(Text.literal(
+            "§c⚠ ¡Protégelo! Solo puede destruirse con un §fpico de netherita§c."), false);
+    }
+
+    @Override
+    public BlockState onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
+        if (!world.isClient && world.getBlockEntity(pos) instanceof NucleusBlockEntity be) {
+            be.clearOwner();
+        }
+        return super.onBreak(world, pos, state, player);
+    }
+}
