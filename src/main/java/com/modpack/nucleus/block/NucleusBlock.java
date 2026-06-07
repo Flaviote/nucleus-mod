@@ -4,6 +4,7 @@ import com.modpack.nucleus.entity.NucleusBlockEntity;
 import com.modpack.nucleus.init.NucleusBlockEntities;
 import com.mojang.serialization.MapCodec;
 import eu.pb4.polymer.core.api.block.PolymerBlock;
+import eu.pb4.polymer.networking.api.PacketContext;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
@@ -26,8 +27,13 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
     }
 
     @Override
-    public Block getPolymerBlock(BlockState state) {
+    public Block getPolymerBlock(BlockState state, PacketContext context) {
         return Blocks.BEACON;
+    }
+
+    @Override
+    public BlockState getPolymerBlockState(BlockState state, PacketContext context) {
+        return Blocks.BEACON.getDefaultState();
     }
 
     @Override
@@ -41,8 +47,9 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
         return new NucleusBlockEntity(pos, state);
     }
 
+    @Nullable
     @Override
-    public @Nullable BlockEntityType<? extends NucleusBlockEntity> getPolymerBlockEntityType() {
+    public BlockEntityType<? extends NucleusBlockEntity> getPolymerBlockEntityType() {
         return NucleusBlockEntities.NUCLEUS_BLOCK_ENTITY;
     }
 
