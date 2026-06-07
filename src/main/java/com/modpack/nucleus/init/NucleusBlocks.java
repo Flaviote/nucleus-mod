@@ -23,9 +23,14 @@ public class NucleusBlocks {
         new Item.Settings().maxCount(1)
     );
 
+    public static final Item RADAR_ITEM = new Item(
+        new Item.Settings().maxCount(1)
+    );
+
     public static void register() {
         Registry.register(Registries.BLOCK, NucleusMod.id("nucleus_block"), NUCLEUS_BLOCK);
         Registry.register(Registries.ITEM,  NucleusMod.id("nucleus_block"), NUCLEUS_BLOCK_ITEM);
-        NucleusMod.LOGGER.info("[Nucleus] Bloque Núcleo registrado.");
+        Registry.register(Registries.ITEM,  NucleusMod.id("radar"),         RADAR_ITEM);
+        NucleusMod.LOGGER.info("[Nucleus] Bloques e ítems registrados.");
     }
 }
