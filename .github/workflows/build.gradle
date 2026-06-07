@@ -1,0 +1,46 @@
+plugins {
+    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = '1.0.0'
+group = 'com.modpack'
+archivesBaseName = 'nucleus'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.fabricmc.net/' }
+    maven { url 'https://maven.nucleoid.xyz' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:1.21.1"
+    mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+    modImplementation "net.fabricmc:fabric-loader:0.16.5"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.104.0+1.21.1"
+
+    // Polymer — empaquetado dentro del jar final
+    modImplementation include("eu.pb4:polymer-core:0.9.14+1.21.1")
+    modImplementation include("eu.pb4:polymer-resource-pack:0.9.14+1.21.1")
+    modImplementation include("eu.pb4:polymer-blocks:0.9.14+1.21.1")
+}
+
+processResources {
+    inputs.property "version", project.version
+    filteringCharset "UTF-8"
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${archivesBaseName}" }
+    }
+}
