@@ -3,6 +3,7 @@ package com.modpack.nucleus.state;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateManager;
@@ -74,7 +75,7 @@ public class NucleusStateManager extends PersistentState {
     }
 
     @Override
-    public NbtCompound writeNbt(NbtCompound nbt) {
+    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         NbtCompound phasesNbt = new NbtCompound();
         phases.forEach((uuid, phase) -> phasesNbt.putInt(uuid.toString(), phase));
         nbt.put("phases", phasesNbt);
@@ -100,7 +101,8 @@ public class NucleusStateManager extends PersistentState {
         return nbt;
     }
 
-    public static NucleusStateManager fromNbt(NbtCompound nbt) {
+    public static NucleusStateManager fromNbt(NbtCompound nbt,
+                                               RegistryWrapper.WrapperLookup registries) {
         NucleusStateManager state = new NucleusStateManager();
 
         NbtCompound phasesNbt = nbt.getCompound("phases");
@@ -132,8 +134,11 @@ public class NucleusStateManager extends PersistentState {
             .getPersistentStateManager();
 
         return manager.getOrCreate(
-            NucleusStateManager::fromNbt,
-            NucleusStateManager::new,
+            new PersistentState.Type<>(
+                NucleusStateManager::new,
+                NucleusStateManager::fromNbt,
+                null
+            ),
             SAVE_KEY
         );
     }
