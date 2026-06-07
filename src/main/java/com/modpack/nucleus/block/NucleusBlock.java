@@ -4,11 +4,12 @@ import com.modpack.nucleus.entity.NucleusBlockEntity;
 import com.modpack.nucleus.init.NucleusBlockEntities;
 import com.mojang.serialization.MapCodec;
 import eu.pb4.polymer.core.api.block.PolymerBlock;
-import eu.pb4.polymer.networking.api.PacketContext;
+import eu.pb4.polymer.core.api.utils.PolymerUtils;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -27,12 +28,12 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
     }
 
     @Override
-    public Block getPolymerBlock(BlockState state, PacketContext context) {
+    public Block getPolymerBlock(ServerPlayerEntity player, BlockState state) {
         return Blocks.BEACON;
     }
 
     @Override
-    public BlockState getPolymerBlockState(BlockState state, PacketContext context) {
+    public BlockState getPolymerBlockState(ServerPlayerEntity player, BlockState state) {
         return Blocks.BEACON.getDefaultState();
     }
 
