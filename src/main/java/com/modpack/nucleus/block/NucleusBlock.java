@@ -26,11 +26,6 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
     }
 
     @Override
-    public Block getPolymerBlock(BlockState state) {
-        return Blocks.BEACON;
-    }
-
-    @Override
     public BlockState getPolymerBlockState(BlockState state) {
         return Blocks.BEACON.getDefaultState();
     }
@@ -46,7 +41,6 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
         return new NucleusBlockEntity(pos, state);
     }
 
-    @Nullable
     public BlockEntityType<? extends NucleusBlockEntity> getPolymerBlockEntityType() {
         return NucleusBlockEntities.NUCLEUS_BLOCK_ENTITY;
     }
