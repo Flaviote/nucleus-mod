@@ -17,129 +17,83 @@ import java.util.UUID;
 
 public class NucleusStateManager extends PersistentState {
 
-    private static final String SAVE_KEY = "nucleus_state";
+    private static final String SAVE_KEY    = "nucleus_state";
+    public  static final int    ZONE_RADIUS = 15;
 
     private final Map<UUID, Integer> phases           = new HashMap<>();
     private final Map<UUID, int[]>   nucleusPositions = new HashMap<>();
     private final Set<UUID>          eliminated       = new HashSet<>();
     private final Set<UUID>          initialized      = new HashSet<>();
+    private final Map<UUID, int[]>   claimZones       = new HashMap<>();
 
-    public int getPhase(UUID player) {
-        return phases.getOrDefault(player, 0);
+    public int getPhase(UUID p)             { return phases.getOrDefault(p, 0); }
+    public void setPhase(UUID p, int phase) { phases.put(p, phase); markDirty(); }
+    public boolean isInitialized(UUID p)    { return initialized.contains(p); }
+    public void setInitialized(UUID p)      { initialized.add(p); markDirty(); }
+    public void setNucleusPosition(UUID p, int x, int y, int z) { nucleusPositions.put(p, new int[]{x,y,z}); markDirty(); }
+    public int[] getNucleusPosition(UUID p) { return nucleusPositions.get(p); }
+    public boolean hasNucleus(UUID p)       { return nucleusPositions.containsKey(p); }
+
+    public void setClaimZone(UUID p, int cx, int cy, int cz) { claimZones.put(p, new int[]{cx,cy,cz}); markDirty(); }
+    public void removeClaimZone(UUID p)     { claimZones.remove(p); markDirty(); }
+    public boolean hasClaimZone(UUID p)     { return claimZones.containsKey(p); }
+    public int[] getClaimZone(UUID p)       { return claimZones.get(p); }
+    public Map<UUID, int[]> getAllClaimZones() { return claimZones; }
+
+    public UUID getZoneOwnerAt(int x, int z) {
+        for (Map.Entry<UUID, int[]> e : claimZones.entrySet()) {
+            int[] c = e.getValue();
+            if (Math.abs(x - c[0]) <= ZONE_RADIUS && Math.abs(z - c[2]) <= ZONE_RADIUS)
+                return e.getKey();
+        }
+        return null;
     }
 
-    public void setPhase(UUID player, int phase) {
-        phases.put(player, phase);
-        markDirty();
+    public boolean isInZoneOf(UUID owner, int x, int z) {
+        int[] c = claimZones.get(owner);
+        return c != null && Math.abs(x - c[0]) <= ZONE_RADIUS && Math.abs(z - c[2]) <= ZONE_RADIUS;
     }
 
-    public boolean isInitialized(UUID player) {
-        return initialized.contains(player);
+    public void eliminate(UUID p) {
+        eliminated.add(p); phases.remove(p); nucleusPositions.remove(p); claimZones.remove(p); markDirty();
     }
-
-    public void setInitialized(UUID player) {
-        initialized.add(player);
-        markDirty();
-    }
-
-    public void setNucleusPosition(UUID player, int x, int y, int z) {
-        nucleusPositions.put(player, new int[]{x, y, z});
-        markDirty();
-    }
-
-    public int[] getNucleusPosition(UUID player) {
-        return nucleusPositions.get(player);
-    }
-
-    public boolean hasNucleus(UUID player) {
-        return nucleusPositions.containsKey(player);
-    }
-
-    public void eliminate(UUID player) {
-        eliminated.add(player);
-        phases.remove(player);
-        nucleusPositions.remove(player);
-        markDirty();
-    }
-
-    public boolean isEliminated(UUID player) {
-        return eliminated.contains(player);
-    }
+    public boolean isEliminated(UUID p) { return eliminated.contains(p); }
 
     public void resetAll() {
-        phases.clear();
-        nucleusPositions.clear();
-        eliminated.clear();
-        initialized.clear();
-        markDirty();
+        phases.clear(); nucleusPositions.clear(); eliminated.clear(); initialized.clear(); claimZones.clear(); markDirty();
     }
 
     @Override
-    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
-        NbtCompound phasesNbt = new NbtCompound();
-        phases.forEach((uuid, phase) -> phasesNbt.putInt(uuid.toString(), phase));
-        nbt.put("phases", phasesNbt);
+    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup reg) {
+        NbtCompound ph = new NbtCompound();
+        phases.forEach((u,v) -> ph.putInt(u.toString(), v));
+        nbt.put("phases", ph);
 
-        NbtCompound posNbt = new NbtCompound();
-        nucleusPositions.forEach((uuid, pos) -> {
-            NbtCompound posEntry = new NbtCompound();
-            posEntry.putInt("x", pos[0]);
-            posEntry.putInt("y", pos[1]);
-            posEntry.putInt("z", pos[2]);
-            posNbt.put(uuid.toString(), posEntry);
-        });
-        nbt.put("positions", posNbt);
+        NbtCompound pos = new NbtCompound();
+        nucleusPositions.forEach((u,v) -> { NbtCompound e = new NbtCompound(); e.putInt("x",v[0]); e.putInt("y",v[1]); e.putInt("z",v[2]); pos.put(u.toString(),e); });
+        nbt.put("positions", pos);
 
-        NbtList eliminatedList = new NbtList();
-        eliminated.forEach(uuid -> eliminatedList.add(NbtString.of(uuid.toString())));
-        nbt.put("eliminated", eliminatedList);
+        NbtCompound zones = new NbtCompound();
+        claimZones.forEach((u,v) -> { NbtCompound e = new NbtCompound(); e.putInt("x",v[0]); e.putInt("y",v[1]); e.putInt("z",v[2]); zones.put(u.toString(),e); });
+        nbt.put("zones", zones);
 
-        NbtList initializedList = new NbtList();
-        initialized.forEach(uuid -> initializedList.add(NbtString.of(uuid.toString())));
-        nbt.put("initialized", initializedList);
-
+        NbtList el = new NbtList(); eliminated.forEach(u -> el.add(NbtString.of(u.toString()))); nbt.put("eliminated", el);
+        NbtList in = new NbtList(); initialized.forEach(u -> in.add(NbtString.of(u.toString()))); nbt.put("initialized", in);
         return nbt;
     }
 
-    public static NucleusStateManager fromNbt(NbtCompound nbt,
-                                               RegistryWrapper.WrapperLookup registries) {
-        NucleusStateManager state = new NucleusStateManager();
-
-        NbtCompound phasesNbt = nbt.getCompound("phases");
-        phasesNbt.getKeys().forEach(key ->
-            state.phases.put(UUID.fromString(key), phasesNbt.getInt(key)));
-
-        NbtCompound posNbt = nbt.getCompound("positions");
-        posNbt.getKeys().forEach(key -> {
-            NbtCompound posEntry = posNbt.getCompound(key);
-            state.nucleusPositions.put(UUID.fromString(key), new int[]{
-                posEntry.getInt("x"),
-                posEntry.getInt("y"),
-                posEntry.getInt("z")
-            });
-        });
-
-        NbtList eliminatedList = nbt.getList("eliminated", 8);
-        eliminatedList.forEach(tag -> state.eliminated.add(UUID.fromString(tag.asString())));
-
-        NbtList initializedList = nbt.getList("initialized", 8);
-        initializedList.forEach(tag -> state.initialized.add(UUID.fromString(tag.asString())));
-
-        return state;
+    public static NucleusStateManager fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup reg) {
+        NucleusStateManager s = new NucleusStateManager();
+        NbtCompound ph = nbt.getCompound("phases"); ph.getKeys().forEach(k -> s.phases.put(UUID.fromString(k), ph.getInt(k)));
+        NbtCompound pos = nbt.getCompound("positions"); pos.getKeys().forEach(k -> { NbtCompound e = pos.getCompound(k); s.nucleusPositions.put(UUID.fromString(k), new int[]{e.getInt("x"),e.getInt("y"),e.getInt("z")}); });
+        NbtCompound zones = nbt.getCompound("zones"); zones.getKeys().forEach(k -> { NbtCompound e = zones.getCompound(k); s.claimZones.put(UUID.fromString(k), new int[]{e.getInt("x"),e.getInt("y"),e.getInt("z")}); });
+        nbt.getList("eliminated",8).forEach(t -> s.eliminated.add(UUID.fromString(t.asString())));
+        nbt.getList("initialized",8).forEach(t -> s.initialized.add(UUID.fromString(t.asString())));
+        return s;
     }
 
     public static NucleusStateManager get(MinecraftServer server) {
-        PersistentStateManager manager = server
-            .getWorld(World.OVERWORLD)
-            .getPersistentStateManager();
-
-        return manager.getOrCreate(
-            new PersistentState.Type<>(
-                NucleusStateManager::new,
-                NucleusStateManager::fromNbt,
-                null
-            ),
-            SAVE_KEY
-        );
+        return server.getWorld(World.OVERWORLD).getPersistentStateManager()
+            .getOrCreate(new PersistentState.Type<>(NucleusStateManager::new, NucleusStateManager::fromNbt, null), SAVE_KEY);
     }
 }
