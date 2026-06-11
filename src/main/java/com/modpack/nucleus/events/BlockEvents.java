@@ -3,7 +3,6 @@ package com.modpack.nucleus.events;
 import com.modpack.nucleus.entity.NucleusBlockEntity;
 import com.modpack.nucleus.state.NucleusStateManager;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.minecraft.block.BlockState;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.BlockTags;
@@ -16,84 +15,96 @@ import java.util.UUID;
 public class BlockEvents {
 
     private static final String NUCLEUS_BLOCK_ID = "nucleus:nucleus_block";
+    private static final String CLAIM_BLOCK_ID   = "nucleus:claim_block";
+    private static final String WARHAMMER_ID     = "nucleus:warhammer";
+
+    private static boolean isRestrictedOre(net.minecraft.block.BlockState state) {
+        return state.isIn(BlockTags.IRON_ORES)
+            || state.isIn(BlockTags.GOLD_ORES)
+            || state.isIn(BlockTags.DIAMOND_ORES)
+            || state.isIn(BlockTags.ANCIENT_DEBRIS)
+            || state.isIn(BlockTags.NETHERITE_STORAGES);
+    }
 
     public static void register() {
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
 
-            if (!(player instanceof ServerPlayerEntity serverPlayer)) return true;
-            if (!(world instanceof ServerWorld serverWorld)) return true;
+            if (!(player instanceof ServerPlayerEntity sp)) return true;
+            if (!(world instanceof ServerWorld sw)) return true;
 
-            UUID uuid = serverPlayer.getUuid();
-            NucleusStateManager stateManager =
-                NucleusStateManager.get(serverWorld.getServer());
-
+            UUID uuid = sp.getUuid();
+            NucleusStateManager sm = NucleusStateManager.get(sw.getServer());
             String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
 
-            // ── Bloque Núcleo ─────────────────────────────────
+            // ── 1. Bloque Núcleo ──────────────────────────────
             if (blockId.equals(NUCLEUS_BLOCK_ID)) {
 
-                boolean hasNetheritePickaxe =
-                    serverPlayer.getMainHandStack().getItem() == Items.NETHERITE_PICKAXE;
-
-                if (!hasNetheritePickaxe) {
-                    serverPlayer.sendMessage(Text.literal(
-                        "§c✗ El Núcleo solo puede destruirse con un §fpico de netherita§c."
-                    ), false);
+                if (sp.getMainHandStack().getItem() != Items.NETHERITE_PICKAXE) {
+                    sp.sendMessage(Text.literal(
+                        "§c✗ El Núcleo solo puede destruirse con un §fpico de netherita§c."), false);
                     return false;
                 }
 
-                if (!(blockEntity instanceof NucleusBlockEntity nucleusBE)) return false;
-
-                String ownerUUIDStr = nucleusBE.getOwnerUUID();
-                String ownerName   = nucleusBE.getOwnerName();
-
+                if (!(blockEntity instanceof NucleusBlockEntity be)) return false;
+                String ownerUUIDStr = be.getOwnerUUID();
                 if (ownerUUIDStr == null || ownerUUIDStr.isEmpty()) return true;
-
                 UUID ownerUUID = UUID.fromString(ownerUUIDStr);
 
-                // El propietario no puede romper su propio Núcleo
                 if (ownerUUID.equals(uuid)) {
-                    serverPlayer.sendMessage(Text.literal(
-                        "§c✗ No puedes destruir tu propio Núcleo."
-                    ), false);
+                    sp.sendMessage(Text.literal("§c✗ No puedes destruir tu propio Núcleo."), false);
                     return false;
                 }
 
-                // Anunciar eliminación
-                serverWorld.getServer().getPlayerManager().broadcast(
-                    Text.literal("§4☠ §fEl Núcleo de §c" + ownerName +
-                        "§f fue destruido por §e" +
-                        serverPlayer.getName().getString() +
-                        "§f. ¡Ha sido eliminado!"),
-                    false
-                );
-
-                // Marcar como eliminado
-                stateManager.eliminate(ownerUUID);
-
-                // Expulsar al propietario si está online
-                ServerPlayerEntity owner = serverWorld.getServer()
-                    .getPlayerManager().getPlayer(ownerUUID);
-                if (owner != null) {
-                    owner.networkHandler.disconnect(
-                        Text.literal("§4Tu Núcleo fue destruido. Partida terminada.")
-                    );
+                if (sw.getServer().getPlayerManager().getPlayer(ownerUUID) == null) {
+                    sp.sendMessage(Text.literal(
+                        "§c✗ Este Núcleo no se puede destruir mientras su propietario está offline."), false);
+                    return false;
                 }
 
+                sw.getServer().getPlayerManager().broadcast(
+                    Text.literal("§4☠ §fEl Núcleo de §c" + be.getOwnerName() +
+                        "§f fue destruido por §e" + sp.getName().getString() + "§f. ¡Eliminado!"), false);
+                sm.eliminate(ownerUUID);
+                ServerPlayerEntity owner = sw.getServer().getPlayerManager().getPlayer(ownerUUID);
+                if (owner != null) {
+                    owner.networkHandler.disconnect(
+                        Text.literal("§4Tu Núcleo fue destruido. Partida terminada."));
+                }
                 return true;
             }
 
-            // ── Fase 0: solo madera ───────────────────────────
-            if (stateManager.getPhase(uuid) != 0) return true;
+            // ── 2. Bloque de claim — solo el dueño ───────────
+            if (blockId.equals(CLAIM_BLOCK_ID)) {
+                UUID zoneOwner = sm.getZoneOwnerAt(pos.getX(), pos.getZ());
+                if (zoneOwner != null && !zoneOwner.equals(uuid)) {
+                    sp.sendMessage(Text.literal(
+                        "§c✗ No puedes romper la zona de protección de otro jugador."), false);
+                    return false;
+                }
+                return true;
+            }
 
-            boolean isWood = state.isIn(BlockTags.LOGS)
-                || state.isIn(BlockTags.LEAVES);
+            // ── 3. Zona de protección ajena ───────────────────
+            UUID zoneOwner = sm.getZoneOwnerAt(pos.getX(), pos.getZ());
+            if (zoneOwner != null && !zoneOwner.equals(uuid)) {
+                String heldId = Registries.ITEM.getId(sp.getMainHandStack().getItem()).toString();
+                if (heldId.equals(WARHAMMER_ID)) {
+                    sp.getMainHandStack().damage(1, sp,
+                        p -> p.sendToolBreakStatus(sp.getActiveHand()));
+                    return true;
+                }
+                sp.sendMessage(Text.literal(
+                    "§c✗ Esta zona está protegida. Necesitas una §fMaza de Guerra§c para destruir aquí."), false);
+                return false;
+            }
 
-            if (!isWood) {
-                serverPlayer.sendMessage(Text.literal(
-                    "§c✗ Solo puedes talar madera hasta colocar tu Núcleo."
-                ), false);
+            // ── 4. Fase 0: bloquear solo minerales ───────────
+            if (sm.getPhase(uuid) != 0) return true;
+
+            if (isRestrictedOre(state)) {
+                sp.sendMessage(Text.literal(
+                    "§c✗ No puedes picar hierro, oro, diamante ni netherita hasta colocar tu Núcleo."), false);
                 return false;
             }
 
