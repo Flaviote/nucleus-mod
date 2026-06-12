@@ -2,6 +2,7 @@ package com.modpack.nucleus.events;
 
 import com.modpack.nucleus.entity.NucleusBlockEntity;
 import com.modpack.nucleus.state.NucleusStateManager;
+import net.minecraft.block.Blocks;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
@@ -19,11 +20,12 @@ public class BlockEvents {
     private static final String WARHAMMER_ID     = "nucleus:warhammer";
 
     private static boolean isRestrictedOre(net.minecraft.block.BlockState state) {
+        net.minecraft.block.Block b = state.getBlock();
         return state.isIn(BlockTags.IRON_ORES)
             || state.isIn(BlockTags.GOLD_ORES)
             || state.isIn(BlockTags.DIAMOND_ORES)
-            || state.isIn(BlockTags.ANCIENT_DEBRIS)
-            || state.isIn(BlockTags.NETHERITE_STORAGES);
+            || b == Blocks.ANCIENT_DEBRIS
+            || b == Blocks.NETHERITE_BLOCK;
     }
 
     public static void register() {
@@ -37,7 +39,6 @@ public class BlockEvents {
             NucleusStateManager sm = NucleusStateManager.get(sw.getServer());
             String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
 
-            // ── 1. Bloque Núcleo ──────────────────────────────
             if (blockId.equals(NUCLEUS_BLOCK_ID)) {
 
                 if (sp.getMainHandStack().getItem() != Items.NETHERITE_PICKAXE) {
@@ -74,7 +75,6 @@ public class BlockEvents {
                 return true;
             }
 
-            // ── 2. Bloque de claim — solo el dueño ───────────
             if (blockId.equals(CLAIM_BLOCK_ID)) {
                 UUID zoneOwner = sm.getZoneOwnerAt(pos.getX(), pos.getZ());
                 if (zoneOwner != null && !zoneOwner.equals(uuid)) {
@@ -85,13 +85,17 @@ public class BlockEvents {
                 return true;
             }
 
-            // ── 3. Zona de protección ajena ───────────────────
             UUID zoneOwner = sm.getZoneOwnerAt(pos.getX(), pos.getZ());
             if (zoneOwner != null && !zoneOwner.equals(uuid)) {
                 String heldId = Registries.ITEM.getId(sp.getMainHandStack().getItem()).toString();
                 if (heldId.equals(WARHAMMER_ID)) {
-                    sp.getMainHandStack().damage(1, sp,
-                        p -> p.sendToolBreakStatus(sp.getActiveHand()));
+                    var stack = sp.getMainHandStack();
+                    int newDamage = stack.getDamage() + 1;
+                    if (newDamage >= stack.getMaxDamage()) {
+                        stack.decrement(1);
+                    } else {
+                        stack.setDamage(newDamage);
+                    }
                     return true;
                 }
                 sp.sendMessage(Text.literal(
@@ -99,7 +103,6 @@ public class BlockEvents {
                 return false;
             }
 
-            // ── 4. Fase 0: bloquear solo minerales ───────────
             if (sm.getPhase(uuid) != 0) return true;
 
             if (isRestrictedOre(state)) {
