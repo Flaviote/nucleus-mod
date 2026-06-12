@@ -1,5 +1,6 @@
 package com.modpack.nucleus.block;
 
+import com.modpack.nucleus.init.NucleusBlocks;
 import com.modpack.nucleus.state.NucleusStateManager;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.block.*;
