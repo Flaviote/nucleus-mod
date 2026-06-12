@@ -9,7 +9,6 @@ import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.decoration.DisplayEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -83,15 +82,23 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
     }
 
     private void spawnHologram(ServerWorld world, BlockPos pos, String playerName) {
-        DisplayEntity.TextDisplayEntity display = new DisplayEntity.TextDisplayEntity(
-            net.minecraft.entity.EntityType.TEXT_DISPLAY, world);
-        display.setPosition(pos.getX() + 0.5, pos.getY() + 1.5, pos.getZ() + 0.5);
-        display.setText(Text.literal("✦ Núcleo de " + playerName + " ✦")
-            .styled(s -> s.withColor(0xCC55FF).withBold(true)));
-        display.setCustomNameVisible(true);
-        display.setCustomName(Text.literal("nucleus_hologram_" + playerName));
-        display.setPersistent(true);
-        world.spawnEntity(display);
+        double x = pos.getX() + 0.5;
+        double y = pos.getY() + 1.5;
+        double z = pos.getZ() + 0.5;
+
+        String text = "Nucleo de " + playerName;
+        String tag  = "nucleus_hologram_" + playerName;
+
+        String command = String.format(java.util.Locale.ROOT,
+            "summon minecraft:text_display %.2f %.2f %.2f " +
+            "{text:'{\"text\":\"%s\",\"color\":\"light_purple\",\"bold\":true}'," +
+            "billboard:\"center\",see_through:1b,Tags:[\"%s\"]}",
+            x, y, z, text, tag
+        );
+
+        world.getServer().getCommandManager().executeWithPrefix(
+            world.getServer().getCommandSource(), command
+        );
     }
 
     @Override
@@ -99,10 +106,10 @@ public class NucleusBlock extends BlockWithEntity implements PolymerBlock {
         if (!world.isClient && world.getBlockEntity(pos) instanceof NucleusBlockEntity be) {
             if (world instanceof ServerWorld sw) {
                 String ownerName = be.getOwnerName();
+                String tag = "nucleus_hologram_" + ownerName;
                 sw.getEntitiesByType(net.minecraft.entity.EntityType.TEXT_DISPLAY,
                     new net.minecraft.util.math.Box(pos).expand(2),
-                    e -> e.getCustomName() != null &&
-                         e.getCustomName().getString().contains("nucleus_hologram_" + ownerName)
+                    e -> e.getCommandTags().contains(tag)
                 ).forEach(net.minecraft.entity.Entity::discard);
             }
             be.clearOwner();
