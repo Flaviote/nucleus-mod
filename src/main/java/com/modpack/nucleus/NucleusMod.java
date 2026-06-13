@@ -1,5 +1,6 @@
 package com.modpack.nucleus;
 
+import com.modpack.nucleus.commands.NucleusCommands;
 import com.modpack.nucleus.events.BlockEvents;
 import com.modpack.nucleus.events.LobbyEvents;
 import com.modpack.nucleus.events.PlayerEvents;
@@ -8,6 +9,7 @@ import com.modpack.nucleus.init.NucleusBlockEntities;
 import com.modpack.nucleus.init.NucleusBlocks;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,9 @@ public class NucleusMod implements ModInitializer {
         BlockEvents.register();
         PlayerEvents.register();
         RadarEvents.register();
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+            NucleusCommands.register(dispatcher));
 
         PolymerResourcePackUtils.markAsRequired();
 
